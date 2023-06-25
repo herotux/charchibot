@@ -12,7 +12,7 @@ config_obj = configparser.ConfigParser()
 config_obj.read("configfile.ini")
 panelparam = config_obj["panel_info"]
 botinfo = config_obj["bot_info"]
-priceinfo = confi_obj["price_info"]
+priceinfo = config_obj["price_info"]
 # set your parameters for the database connection URI using the keys from the configfile.ini
 TOKEN = botinfo["TOKEN"]
 CHANNEL_ID = botinfo["CHANNEL_ID"]
@@ -26,15 +26,15 @@ DB_FILE =  botinfo["dbfile"]
 
 
 
-ad_cost = priceinfo["ad_cost"]
+ad_cost = int(priceinfo["ad_cost"])
 #تعداد کاربران روی یک سرور
-usersnum = priceinfo["usersnum"]
+usersnum =int( priceinfo["usersnum"])
 #هزینه سرور
-server_cost = priceinfo["server_cost"]
+server_cost = int(priceinfo["server_cost"])
 #قیمت به ازای یک گیگابایت ترافیک به ریال
-price_in_GB = priceinfo["price_in_GB"]
+price_in_GB = int(priceinfo["price_in_GB"])
 #حداقل سود مورد انتظار به درصد
-min_profit = priceinfo["min_profit"]
+min_profit = int(priceinfo["min_profit"])
 
 
 
@@ -56,16 +56,20 @@ conn.commit()
 
 def date_calc(days):
    today = datetime.today()
-   new_date = today + timedelta(days)
+   new_date = today + timedelta(int(days))
    new_date_str = new_date.strftime('%Y-%m-%d')
    return new_date_str
 
-def price_calc(ad_cost, server_cost, price_in_GB, usersnum, min_profit, traffic, expindays, multiuser):
-   fixed_cost= ad_cost + servercost
+def price_calc(traffic, expindays, multiuser):
+   fixed_cost= ad_cost + server_cost
    fcu = (fixed_cost / usersnum)/30 
    inv = 1 + min_profit/100
-   price = (trafic * price_in_GB + fcu * expindays) * inv
-   return price
+   musr = int(multiuser)
+   if multiuser == 1:
+      price = (traffic * price_in_GB + fcu * expindays) * inv
+   else:
+      price = ((int(traffic) * price_in_GB + fcu * int(expindays)) * inv) * (musr - musr/10)
+   return round(price)
 # تابع برای ذخیره اطلاعات کاربر در دیتابیس SQLite
 def save_user_data(user_id, username, join_date, is_admin):
     c.execute('INSERT OR REPLACE INTO users (user_id, username, join_date, is_admin) VALUES (?, ?, ?, ?)', (user_id, username, join_date, is_admin))
@@ -196,14 +200,15 @@ async def username(update, context: ContextTypes.DEFAULT_TYPE):
         "type_traffic": "gb",
         "expdate": date_calc(user_data["expdate"]),
     }
-    requests.post(url,kart)
+    #requests.post(url,kart)
+    service_price = price_calc(user_data['traffic'], user_data["expdate"], user_data["multiuser"])
     await update.message.reply_text(f'از خرید شما ممنونیم!\n\n'
-                              f'حجم بسته : {user_data["traffic"]}\n'
-                              f'مدت اعتبار: {user_data["expdate"]}\n'
-                              f'تعداد کاربران: {user_data["multiuser"]}\n'
+                              f'حجم بسته : {user_data["traffic"]} گیگابایت\n'
+                              f'مدت اعتبار: {user_data["expdate"]} روز\n'
+                              f'تعداد کاربران: {user_data["multiuser"]} کاربر \n'
                               f'کلمه عبور: {user_data["passwd"]}\n'
-                              f'نام کاربری: {user_data["username"]}')
-    
+                              f'نام کاربری: {user_data["username"]}\n'
+			      f'هزینه سرویس: {service_price} ریال')
     return ConversationHandler.END
 
 async def cancel(update, context: ContextTypes.DEFAULT_TYPE) -> int:
