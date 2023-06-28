@@ -1,5 +1,17 @@
 # charchibot
 
+#install git
+
+```
+apt update
+apt install git
+```
+
+#clone this repo
+
+```
+git clone https://github.com/herotux/charchibot.git
+```
 
 ##first rename Sampleconfigfile.ini
 
@@ -17,9 +29,10 @@ nano configfile.ini
 ##install requirements and start bot
 
 ```
-apt update
+
 pip install pipenv
 pipenv shell
+cd carchibot
 pipenv install -r requirement.txt
 python xbot.py &
 ```
