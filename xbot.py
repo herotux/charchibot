@@ -1,5 +1,4 @@
 from distutils.log import error
-import imp
 from urllib import response
 import telegram
 import logging
@@ -11,9 +10,9 @@ from telegram import ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMa
 from datetime import datetime, timedelta
 import json
 from persiantools.jdatetime import JalaliDate, JalaliDateTime
-import random
 import pytz    
-
+import string
+from random import randrange
 
 config_obj = configparser.ConfigParser()
 config_obj.read("configfile.ini")
@@ -65,6 +64,17 @@ c.execute('''CREATE TABLE IF NOT EXISTS users (
             )''')
 conn.commit()
 
+# ساخت جدول users در دیتابیس SQLite
+c.execute('''CREATE TABLE IF NOT EXISTS orders (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                password TEXT,
+                multiuser INTEGER,
+                traffic INTEGER,
+                expdate TEXT
+            )''')
+conn.commit()
+
 def date_calc(days):
    today = datetime.today()
    new_date = today + timedelta(int(days))
@@ -81,6 +91,12 @@ def price_calc(traffic, expindays, multiuser):
    else:
         price = ((int(traffic) * price_in_GB + fcu * int(expindays)) * inv) * (musr - musr/10)
    return round(price)
+# تابع برای ذخیره اطلاعات خرید در دیتابیس SQLite
+def save_buy_data(user_id, username, password, multiuser, traffic, expdate ):
+    c.execute('INSERT OR REPLACE INTO orders (user_id, username, password, multiuser, traffic, expdate) VALUES (?, ?, ?, ?, ?, ?)', (user_id, username, password, multiuser, traffic, expdate))
+    conn.commit()
+
+
 # تابع برای ذخیره اطلاعات کاربر در دیتابیس SQLite
 def save_user_data(user_id, username, join_date, is_admin, wallet):
     c.execute('INSERT OR REPLACE INTO users (user_id, username, join_date, is_admin, wallet) VALUES (?, ?, ?, ?, ?)', (user_id, username, join_date, is_admin, wallet))
@@ -92,6 +108,7 @@ def update_wallet(userid, new_value):
         data = (new_value, userid)
         
         c.execute(sql_update_query, data)
+        conn.commit()
     except sqlite3.Error as error:
         pass
 
@@ -103,17 +120,31 @@ back_key = [[back_button]]
 back_reply_markup = InlineKeyboardMarkup(back_key)
 
 #password gen
-def password_gen():
-    list_of_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()"  
-  
-    # using the random.sample() method to return a list of randomly selected characters from the list of characters.  
-    selected_char = random.sample(list_of_chars, 12)  
-  
-    # converting the list into the string  
-    pass_str = "".join(selected_char)  
-      
-    # returning the generated password string  
-    return pass_str 
+def password_gen(id_lenght = 7, alphabet = string.ascii_letters + string.digits):
+
+    id_list = []
+
+    # for the default alphabet this function will include an special random character on a random position on the password. 
+    special_char_index = -1 
+    if alphabet == string.ascii_letters + string.digits:
+        lenght_punctiation = len(string.punctuation) 
+        range_punct = randrange(lenght_punctiation)
+        special_char = string.punctuation[range_punct]
+        special_char_index = randrange(id_lenght)
+
+
+    for i in range(id_lenght):
+        index = randrange(len(alphabet))
+
+        # in this part is where the special character gets added to the password (only if the default alphabed is used)
+        if i == special_char_index:
+            id_list.append(special_char)
+        else:
+            id_list.append(alphabet[index])
+
+    id = ''.join(id_list)    
+
+    return id
 
 # جداسازی ه رقم 
 def rial_nums(nums):
@@ -149,6 +180,23 @@ async def show_user_info(update, context: ContextTypes.DEFAULT_TYPE):
     user_info_message = update.message.reply_text(message_text, reply_markup=back_reply_markup)
     await user_info_message
 
+async def show_user_orders(update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    c.execute('SELECT * FROM orders WHERE user_id = ?', (user_id,))
+    row = c.fetchone()
+    if row:
+        username = row[1]
+        password = row[2]
+        multiuser = row[3]
+        traffic = row[4]
+        expdate = row[5]
+
+        message_text = f'نام کاربری: @{username}\n رمز عبور : {password}\nتعداد کاربر: {multiuser}\nترافیک: {traffic}\nتاریخ انقضا: {expdate} '
+        
+    else:
+        message_text = 'شما هنوز سرویسی خریداری نکرده اید.'
+    user_order_message = update.message.reply_text(message_text, reply_markup=back_reply_markup)
+    await user_order_message
 #check for user exist
 def check_user_reg(user_id):
     c.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
@@ -341,9 +389,11 @@ async def username(update, context: ContextTypes.DEFAULT_TYPE):
     # Save the user's answer and display all the answers
     user_data['username'] = update.message.text
     user_id = update.effective_user.id
+    lenght = 15
+    password = password_gen(id_lenght = lenght)
     kart = {
         "username": user_data["username"],
-        "password": password_gen,
+        "password": password,
         "multiuser": user_data["multiuser"],
         "traffic": user_data['traffic'],
         "type_traffic": "gb",
@@ -358,20 +408,21 @@ async def username(update, context: ContextTypes.DEFAULT_TYPE):
     if wallet_balance >= service_price:
 
         adduser_status = add_user(kart)
+        save_buy_data(user_id, user_data["username"], password, user_data["multiuser"], user_data["traffic"], user_data["expdate"] )
         if adduser_status == 200:
             new_value = (wallet_balance) - (service_price)
-            pfw = update_wallet(user_id, new_value)
+            update_wallet(user_id, new_value)
             print (new_value)
-            await update.message.reply_text(f'از خرید شما ممنونیم!\n\n'
+            await update.message.reply_text(f'از خرید شما ممنونیم!\n'
                                 f'حجم بسته : {user_data["traffic"]} گیگابایت\n'
                                 f'مدت اعتبار: {user_data["expdate"]} روز\n'
                                 f'تعداد کاربران: {user_data["multiuser"]} کاربر \n'
                                 f'نام کاربری: {user_data["username"]}\n'
-                                f'کلمه عبور: {password_gen}\n'
+                                f'کلمه عبور: {password}\n'
                                 f'هزینه سرویس: {service_price} ریال\n'
-                                f'مانده حساب کیف پول:{new_value}', reply_markup=pay_reply_markup)
+                                f'مانده حساب کیف پول:{new_value}', reply_markup = back_button)
         else:
-            await update.message.reply_text('مشکلی در ایجاد کاربر بوجود آمد با پشتیبانی تماس بگیرید', areply_markup = back_button )
+            await update.message.reply_text('مشکلی در ایجاد کاربر بوجود آمد با پشتیبانی تماس بگیرید', reply_markup = back_button )
     else :
         await update.message.reply_text('موجودی کیف پول شما برای این سرویس کافی نمیباشد ابتدا حساب خود را شارژ کنید سپس مجدد اقدام به خرید نمایید',reply_markup= back_button)
     data = {
