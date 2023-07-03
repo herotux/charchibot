@@ -16,6 +16,8 @@ git clone https://github.com/herotux/charchibot.git
 ##first rename Sampleconfigfile.ini
 
 ```
+cd carchibot
+
 mv Sampleconfigfile.ini configfile.ini
 ```
 
@@ -29,7 +31,6 @@ nano configfile.ini
 ##install requirements and start bot
 
 ```
-
 pip install pipenv
 pipenv shell
 cd carchibot
