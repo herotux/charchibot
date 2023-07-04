@@ -142,7 +142,8 @@ async def Admin_rm_user_go(update: Update, context: ContextTypes.DEFAULT_TYPE)->
         delete_buy_data(username)
         await update.message.reply_text(f'کاربر حذف شد!\n')
     else :
-        await update.message.reply_text('مشکلی در حذف کاربر به وجود آمد')   
+        await update.message.reply_text('مشکلی در حذف کاربر به وجود آمد')  
+    return ConversationHandler.END 
 
 Aadduser = range(1)
 async def admin_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE)-> int:
@@ -172,9 +173,10 @@ async def Admin_add_user_go(update: Update, context: ContextTypes.DEFAULT_TYPE)-
                                 f'مدت اعتبار: {text[4]} روز\n'
                                 f'تعداد کاربران: {text[2]} کاربر \n'
                                 f'نام کاربری: {text[1]}\n'
-                                f'کلمه عبور: {password}\n', reply_markup = back_button)
+                                f'کلمه عبور: {password}\n', reply_markup = back_reply_markup)
     else :
         await update.message.reply_text('مشکلی در ایجاد کاربر به وجود آمد')
+    return ConversationHandler.END
     
 Aactuser = range(1)
 async def admin_act_user(update: Update, context: ContextTypes.DEFAULT_TYPE)-> int:
@@ -188,9 +190,10 @@ async def Admin_act_user_go(update: Update, context: ContextTypes.DEFAULT_TYPE)-
     username = text[0]
     actuser_status = actiate_user(username)
     if actuser_status == 200:
-        await update.message.reply_text(f'کاربر فعال شد!\n')
+        await update.message.reply_text(f'کاربر فعال شد!', reply_markup=back_reply_markup)
     else :
-        await update.message.reply_text('مشکلی در فعالسازی کاربر به وجود آمد')   
+        await update.message.reply_text('مشکلی در فعالسازی کاربر به وجود آمد', reply_markup=back_reply_markup)   
+    return ConversationHandler.END
 
 
 Adactuser = range(1)
@@ -207,7 +210,8 @@ async def Admin_dact_user_go(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if dactuser_status == 200:
         await update.message.reply_text(f'کاربر غیرفعال شد!\n')
     else :
-        await update.message.reply_text('مشکلی در غیرفعالسازی کاربر به وجود آمد')  
+        await update.message.reply_text('مشکلی در غیرفعالسازی کاربر به وجود آمد', reply_markup=back_reply_markup) 
+    return ConversationHandler.END 
 
 
 #  تعریف دکمه‌های منو مدیر
@@ -440,7 +444,7 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def traffic(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Save the user's answer and send the second question
     user_data['traffic'] = update.message.text
-    await update.message.reply_text("مدت زمان بسته به روز وارد کنید")
+    await update.message.reply_text("مدت زمان بسته به روز وارد کنید", reply_markup=back_reply_markup)
     
 
     return EXP_STATE
@@ -449,14 +453,14 @@ async def EXPDATE(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Save the user's answer and send the second question
     user_data['expdate'] = update.message.text
     
-    await update.message.reply_text('تعداد کاربر را وارد کنید')
+    await update.message.reply_text('تعداد کاربر را وارد کنید', reply_markup=back_reply_markup)
 
     return MUTIUSER_STATE
 
 async def multiuser(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Save the user's answer and send the third question
     user_data['multiuser'] = update.message.text
-    await update.message.reply_text('یک نام کاربری وارد کنید:')
+    await update.message.reply_text('یک نام کاربری وارد کنید:', reply_markup=back_reply_markup)
 
     return USESRNAME_STATE
 
@@ -543,11 +547,11 @@ async def username(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 f'پورت:{port}\n'
                                 f'پورت udp: {udp}\n'
                                 f'هزینه سرویس: {service_price} ریال\n'
-                                f'مانده حساب کیف پول:{new_value}', reply_markup = back_button)
+                                f'مانده حساب کیف پول:{new_value}' , reply_markup=back_reply_markup)
         else:
-            await update.message.reply_text('مشکلی در ایجاد کاربر بوجود آمد با پشتیبانی تماس بگیرید', reply_markup = back_button )
+            await update.message.reply_text('مشکلی در ایجاد کاربر بوجود آمد با پشتیبانی تماس بگیرید', reply_markup=back_reply_markup )
     else :
-        await update.message.reply_text('موجودی کیف پول شما برای این سرویس کافی نمیباشد ابتدا حساب خود را شارژ کنید سپس مجدد اقدام به خرید نمایید',reply_markup= back_button)
+        await update.message.reply_text('موجودی کیف پول شما برای این سرویس کافی نمیباشد ابتدا حساب خود را شارژ کنید سپس مجدد اقدام به خرید نمایید' , reply_markup=back_reply_markup)
     data = {
         'amount': service_price,
     }
