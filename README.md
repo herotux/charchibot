@@ -16,7 +16,7 @@ git clone https://github.com/herotux/charchibot.git
 ##first rename Sampleconfigfile.ini
 
 ```
-cd carchibot
+cd charchibot
 
 mv Sampleconfigfile.ini configfile.ini
 ```
